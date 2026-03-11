@@ -1,0 +1,62 @@
+<script>
+    async function sendMove(idx) {
+        const buttons = document.querySelectorAll('.move-buttons button');
+        buttons.forEach(b => b.disabled = true);
+        document.getElementById('ai-status').style.display = 'block';
+        
+        let prog = 0;
+        const interval = setInterval(() => {
+            if (prog < 90) prog += 5;
+            document.getElementById('ai-progress').value = prog;
+        }, 100);
+
+        const response = await fetch('/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ move_idx: idx })
+        });
+        
+        const data = await response.json();
+        clearInterval(interval);
+        document.getElementById('ai-progress').value = 100;
+        
+        updateBoard(data);
+        document.getElementById('ai-status').style.display = 'none';
+    }
+
+    function updateBoard(data) {
+        const boardDiv = document.getElementById('board');
+        boardDiv.innerHTML = '';
+        const emojis = {1:"🦁", 2:"🦒", 3:"🐘", 4:"🐥", 5:"🐔", "-1":"▽🦁", "-2":"▽🦒", "-3":"▽🐘", "-4":"▽🐥", 0:""};
+        
+        data.board.forEach(row => {
+            row.forEach(cell => {
+                const div = document.createElement('div');
+                div.className = 'cell';
+                div.innerText = emojis[cell] || (cell < 0 ? emojis[cell.toString()] : "");
+                boardDiv.appendChild(div);
+            });
+        });
+
+        if (data.winner !== 0) {
+            alert(data.winner === 1 ? "🎉 あなたの勝ち！" : "😱 AIの勝ち！");
+            location.reload();
+        } else {
+            const btnContainer = document.getElementById('move-buttons');
+            btnContainer.innerHTML = '';
+            // 整形済みの名前リストを使ってボタンを再生成
+            data.next_move_names.forEach((name, i) => {
+                const btn = document.createElement('button');
+                btn.innerText = name;
+                btn.onclick = () => sendMove(i);
+                btnContainer.appendChild(btn);
+            });
+        }
+    }
+</script>
+
+<div id="move-buttons" class="move-buttons">
+    {% for i in range(move_names|length) %}
+        <button onclick="sendMove({ i })">{{ move_names[i] }}</button>
+    {% endfor %}
+</div>
