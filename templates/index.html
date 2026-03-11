@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Taiki's どうぶつ将棋 Web版</title>
+    <title>Taiki's どうぶつ将棋 Perfect</title>
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #fdf6e3; padding: 20px; color: #5d4037; }
         .hand-area { background: #d7ccc8; border-radius: 8px; padding: 10px; min-height: 50px; width: 240px; margin: 10px auto; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 1.8rem; border: 1px inset #8d6e63; }
@@ -12,21 +12,18 @@
         .board { display: grid; grid-template-columns: repeat(3, 80px); background: #e0c080; border: 2px solid #5d4037; }
         .cell { width: 80px; height: 100px; border: 1px solid #5d4037; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; background: white; }
         .controls { margin-top: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
-        .move-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
-        button { padding: 12px; background: #5d4037; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1.1rem; font-weight: bold; }
+        .move-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        button { padding: 12px; background: #5d4037; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         button:hover { background: #795548; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        #win-message { display: none; font-size: 1.8rem; font-weight: bold; color: #d32f2f; margin: 20px; border: 2px solid #d32f2f; padding: 10px; border-radius: 8px; background: white; }
-        .restart-btn { background: #888; margin-top: 20px; }
+        #win-message { display: none; font-size: 1.8rem; font-weight: bold; color: #d32f2f; margin: 20px; }
+        .sub-controls { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <h1>🐾 どうぶつ将棋 Web版 🐾</h1>
-
+    <h1>🐾 どうぶつ将棋 Web Perfect 🐾</h1>
     <div class="hand-area" id="hand2">
         {% for p, count in hand2.items() %}{% for _ in range(count) %}<span>{{ get_emoji(p|int * -1) }}</span>{% endfor %}{% endfor %}
     </div>
-    
     <div class="board-container">
         <div class="label-cols"><span>３</span><span>２</span><span>１</span></div>
         <div class="label-rows"><span>一</span><span>二</span><span>三</span><span>四</span></div>
@@ -36,11 +33,9 @@
             {% endfor %}{% endfor %}
         </div>
     </div>
-
     <div class="hand-area" id="hand1">
         {% for p, count in hand1.items() %}{% for _ in range(count) %}<span>{{ get_emoji(p|int) }}</span>{% endfor %}{% endfor %}
     </div>
-
     <div class="controls">
         <div id="win-message"></div>
         <p id="status-text" style="font-weight: bold;">あなたの番です（▲先手）</p>
@@ -49,90 +44,59 @@
                 <button onclick="playTurn({{ move.id }})">{{ move.text }}</button>
             {% endfor %}
         </div>
-        <button onclick="location.href='/'" class="restart-btn">最初からやり直す</button>
+        <div class="sub-controls">
+            <button onclick="undoMove()" style="background:#f39c12;">待った！</button>
+            <button onclick="location.href='/'" style="background:#888;">やり直す</button>
+        </div>
     </div>
-
     <script>
-        const pieceEmojis = {
-            1:"🦁", 2:"🦒", 3: "🐘", 4: "🐥", 5: "🐔", 
-            "-1": "▽🦁", "-2": "▽🦒", "-3": "▽🐘", "-4": "▽🐥", "-5": "▽🐔", 
-            0: ""
-        };
-
+        const emojis = {1:"🦁", 2:"🦒", 3:"🐘", 4:"🐥", 5:"🐔", "-1":"▽🦁", "-2":"▽🦒", "-3":"▽🐘", "-4":"▽🐥", "-5":"▽🐔", 0:""};
         async function playTurn(idx) {
-            const btnArea = document.getElementById('move-buttons');
+            const btns = document.getElementById('move-buttons');
             const status = document.getElementById('status-text');
-            
-            // 操作のロック
-            btnArea.style.pointerEvents = 'none';
-            btnArea.style.opacity = '0.5';
-            status.innerText = "AIが考えています...";
-
-            try {
-                const response = await fetch('/battle', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ move_idx: idx })
-                });
-                const data = await response.json();
-                updateDisplay(data);
-            } catch (e) {
-                alert("通信エラーが発生しました。");
-                console.error(e);
-            } finally {
-                btnArea.style.pointerEvents = 'auto';
-                btnArea.style.opacity = '1';
-            }
+            btns.style.pointerEvents = 'none'; btns.style.opacity = '0.5';
+            status.innerText = "AIが思考中...";
+            const res = await fetch('/battle', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({move_idx: idx}) });
+            const data = await res.json();
+            updateUI(data);
+            btns.style.pointerEvents = 'auto'; btns.style.opacity = '1';
         }
-
-        function updateDisplay(data) {
-            // 盤面の書き換え
+        async function undoMove() {
+            const res = await fetch('/undo', { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                updateUI(data);
+                document.getElementById('win-message').style.display = 'none';
+            } else { alert("これ以上戻れません！"); }
+        }
+        function updateUI(data) {
             const boardDiv = document.getElementById('board');
             boardDiv.innerHTML = '';
-            data.board.forEach(row => {
-                row.forEach(cell => {
-                    const div = document.createElement('div');
-                    div.className = 'cell';
-                    div.innerText = pieceEmojis[cell] || (cell < 0 ? pieceEmojis[cell.toString()] : "");
-                    boardDiv.appendChild(div);
-                });
-            });
-
-            // 持ち駒の書き換え
-            updateHand('hand1', data.hand1, 1);
-            updateHand('hand2', data.hand2, -1);
-
-            // 勝敗判定
+            data.board.forEach(row => row.forEach(cell => {
+                const div = document.createElement('div'); div.className = 'cell';
+                div.innerText = emojis[cell] || (cell < 0 ? emojis[cell.toString()] : "");
+                boardDiv.appendChild(div);
+            }));
+            updateHand('hand1', data.hand1, 1); updateHand('hand2', data.hand2, -1);
             if (data.winner !== 0) {
                 const msg = document.getElementById('win-message');
-                msg.innerText = data.winner === 1 ? "🎉 あなたの勝ちです！" : "😱 AIの勝ちです！";
-                msg.style.display = 'block';
-                document.getElementById('move-buttons').innerHTML = ''; // ボタンを消去して画面維持
+                msg.innerText = data.winner === 1 ? "🎉 あなたの勝ち！" : "😱 AIの勝ち！";
+                msg.style.display = 'block'; document.getElementById('move-buttons').innerHTML = '';
                 document.getElementById('status-text').innerText = "対局終了";
-                return;
+            } else {
+                const btnContainer = document.getElementById('move-buttons');
+                btnContainer.innerHTML = '';
+                data.next_options.forEach(opt => {
+                    const btn = document.createElement('button'); btn.innerText = opt.text;
+                    btn.onclick = () => playTurn(opt.id); btnContainer.appendChild(btn);
+                });
+                document.getElementById('status-text').innerText = "あなたの番です（▲先手）";
             }
-
-            // 指し手ボタンの更新
-            const btnContainer = document.getElementById('move-buttons');
-            btnContainer.innerHTML = '';
-            data.next_options.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.innerText = opt.text;
-                btn.onclick = () => playTurn(opt.id);
-                btnContainer.appendChild(btn);
-            });
-            document.getElementById('status-text').innerText = "あなたの番です（▲先手）";
         }
-
         function updateHand(id, hand, turn) {
-            const area = document.getElementById(id);
-            area.innerHTML = '';
-            for (let p in hand) {
-                for (let i = 0; i < hand[p]; i++) {
-                    const span = document.createElement('span');
-                    span.innerText = pieceEmojis[p * turn];
-                    area.appendChild(span);
-                }
+            const area = document.getElementById(id); area.innerHTML = '';
+            for (let p in hand) for (let i = 0; i < hand[p]; i++) {
+                const span = document.createElement('span'); span.innerText = emojis[p * turn]; area.appendChild(span);
             }
         }
     </script>
