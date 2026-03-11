@@ -4,7 +4,7 @@ from game_state import DobutsuShogiState
 from analyzer import simple_analysis
 
 app = Flask(__name__)
-app.secret_key = "taiki_shogi_ultimate_key"
+app.secret_key = "shogi_ultimate_key"
 
 def get_piece_emoji(piece):
     mapping = {1:"🦁", 2:"🦒", 3:"🐘", 4:"🐥", 5:"🐔", -1:"▽🦁", -2:"▽🦒", -3:"▽🐘", -4:"▽🐥", -5:"▽🐔", 0:""}

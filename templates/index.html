@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Taiki's どうぶつ将棋 Perfect</title>
+    <title>どうぶつ将棋プログラム</title>
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #fdf6e3; padding: 20px; color: #5d4037; }
         .hand-area { background: #d7ccc8; border-radius: 8px; padding: 10px; min-height: 50px; width: 240px; margin: 10px auto; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 1.8rem; border: 1px inset #8d6e63; }
@@ -20,7 +20,7 @@
     </style>
 </head>
 <body>
-    <h1>🐾 どうぶつ将棋 Web Perfect 🐾</h1>
+    <h1>どうぶつ将棋 🦊</h1>
     <div class="hand-area" id="hand2">
         {% for p, count in hand2.items() %}{% for _ in range(count) %}<span>{{ get_emoji(p|int * -1) }}</span>{% endfor %}{% endfor %}
     </div>
@@ -45,8 +45,8 @@
             {% endfor %}
         </div>
         <div class="sub-controls">
-            <button onclick="undoMove()" style="background:#f39c12;">待った！</button>
-            <button onclick="location.href='/'" style="background:#888;">やり直す</button>
+            <button onclick="undoMove()" style="background:#f39c12;">待った</button>
+            <button onclick="location.href='/'" style="background:#888;">最初から</button>
         </div>
     </div>
     <script>
@@ -55,7 +55,7 @@
             const btns = document.getElementById('move-buttons');
             const status = document.getElementById('status-text');
             btns.style.pointerEvents = 'none'; btns.style.opacity = '0.5';
-            status.innerText = "AIが思考中...";
+            status.innerText = "Computerが思考中...";
             const res = await fetch('/battle', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({move_idx: idx}) });
             const data = await res.json();
             updateUI(data);
@@ -80,7 +80,7 @@
             updateHand('hand1', data.hand1, 1); updateHand('hand2', data.hand2, -1);
             if (data.winner !== 0) {
                 const msg = document.getElementById('win-message');
-                msg.innerText = data.winner === 1 ? "🎉 あなたの勝ち！" : "😱 AIの勝ち！";
+                msg.innerText = data.winner === 1 ? "あなたの勝ちです！やったね！😊" : " AIの勝ち!😂";
                 msg.style.display = 'block'; document.getElementById('move-buttons').innerHTML = '';
                 document.getElementById('status-text').innerText = "対局終了";
             } else {
