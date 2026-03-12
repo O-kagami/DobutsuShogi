@@ -2,3 +2,5 @@ flask
 tqdm
 gunicorn
 pandas
+tabulate
+copy
