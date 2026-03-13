@@ -13,9 +13,15 @@ class DobutsuShogiState:
         self.turn = turn
         self.history = history if history else []
         
-        # 履歴・メモ用のキー作成
-        board_tuple = tuple(tuple(row) for row in self.board)
-        self.current_state_key = (board_tuple, self.turn)
+        # 履歴・メモ用のキー作成（盤面 + 持ち駒 + 手番）
+        # Flask sessionに入れられるように、シリアライズ可能な文字列キーにする
+        self.current_state_key = self._make_state_key()
+
+    def _make_state_key(self):
+        board_part = ','.join(str(p) for row in self.board for p in row)
+        h1_part = ','.join(f"{k}:{self.hand_p1.get(k,0)}" for k in sorted(self.hand_p1.keys()))
+        h2_part = ','.join(f"{k}:{self.hand_p2.get(k,0)}" for k in sorted(self.hand_p2.keys()))
+        return f"t={self.turn}|b={board_part}|h1={h1_part}|h2={h2_part}"
 
     def display(self):
         # 駒の番号をかわいい絵文字に変換する辞書
@@ -111,7 +117,9 @@ class DobutsuShogiState:
         return DobutsuShogiState(new_board, new_h1, new_h2, -self.turn, self.history + [self.current_state_key])
 
     def is_repetition(self):
-        return self.history.count(self.current_state_key) >= 2
+        # 現在局面も含めて同一局面が4回出現したら千日手
+        occurrences = self.history.count(self.current_state_key) + 1
+        return occurrences >= 4
 
     # judge.pyの関数をメソッドとして呼び出せるようにする
     def is_check(self, turn): return is_check(self, turn)

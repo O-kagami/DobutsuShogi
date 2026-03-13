@@ -27,6 +27,10 @@ def is_check(state, turn):
 
 def decide_winner(state):
     """勝敗判定（キャッチ・トライ・詰み）"""
+    # 千日手（引き分け）
+    if getattr(state, "is_repetition", None) and state.is_repetition():
+        return DRAW
+
     l1_pos, l2_pos = None, None
     for r in range(4):
         for c in range(3):

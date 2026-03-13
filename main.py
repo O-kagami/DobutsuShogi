@@ -34,14 +34,30 @@ def index():
     session['board'], session['turn'] = state.board, state.turn
     session['hand_p1'], session['hand_p2'] = serialize_hand(state.hand_p1), serialize_hand(state.hand_p2)
     session['history'] = []
+    session['rep_history'] = []
     return render_template('index.html', board=state.board, hand1=state.hand_p1, hand2=state.hand_p2, move_options=get_rich_moves(state), get_emoji=get_piece_emoji)
 
 @app.route('/battle', methods=['POST'])
 def battle():
     try:
         data = request.json
-        history = session.get('history', []); history.append({"board": session['board'], "turn": session['turn'], "hand_p1": session['hand_p1'], "hand_p2": session['hand_p2']}); session['history'] = history
-        state = DobutsuShogiState(session['board'], deserialize_hand(session['hand_p1']), deserialize_hand(session['hand_p2']), session['turn'])
+        history = session.get('history', [])
+        history.append({
+            "board": session['board'],
+            "turn": session['turn'],
+            "hand_p1": session['hand_p1'],
+            "hand_p2": session['hand_p2'],
+            "rep_history": session.get('rep_history', [])
+        })
+        session['history'] = history
+
+        state = DobutsuShogiState(
+            session['board'],
+            deserialize_hand(session['hand_p1']),
+            deserialize_hand(session['hand_p2']),
+            session['turn'],
+            history=session.get('rep_history', [])
+        )
         
         moves = state.get_legal_moves()
         state = state.make_move(moves[int(data['move_idx'])])
@@ -51,10 +67,12 @@ def battle():
             return jsonify({**mid_data, "winner": state.decide_winner(), "mid_board": mid_data["board"]})
 
         _, ai_path = simple_analysis(state, AI_SETTINGS["DEPTH"])
-        if ai_path: state = state.make_move(ai_path[0][0])
+        if ai_path:
+            state = state.make_move(ai_path[0][0])
         
-        session['board'], session['turn'] = state.board, session['turn']
+        session['board'], session['turn'] = state.board, state.turn
         session['hand_p1'], session['hand_p2'] = serialize_hand(state.hand_p1), serialize_hand(state.hand_p2)
+        session['rep_history'] = state.history
         
         return jsonify({
             "mid_board": mid_data["board"], "mid_hand1": mid_data["hand1"], "mid_hand2": mid_data["hand2"],
@@ -67,7 +85,15 @@ def battle():
 def undo():
     history = session.get('history', [])
     if history:
-        last = history.pop(); session.update({'board': last['board'], 'turn': last['turn'], 'hand_p1': last['hand_p1'], 'hand_p2': last['hand_p2'], 'history': history})
+        last = history.pop()
+        session.update({
+            'board': last['board'],
+            'turn': last['turn'],
+            'hand_p1': last['hand_p1'],
+            'hand_p2': last['hand_p2'],
+            'rep_history': last.get('rep_history', []),
+            'history': history
+        })
         state = DobutsuShogiState(session['board'], deserialize_hand(session['hand_p1']), deserialize_hand(session['hand_p2']), session['turn'])
         return jsonify({"board": state.board, "hand1": session['hand_p1'], "hand2": session['hand_p2'], "winner": 0, "next_options": get_rich_moves(state)})
     return jsonify({"error": "No history"}), 400

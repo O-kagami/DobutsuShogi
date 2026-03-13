@@ -4,6 +4,8 @@ from move_orderer import get_ordered_moves
 
 def simple_analysis(state, depth, alpha=-float('inf'), beta=float('inf')):
     winner = state.decide_winner()
+    if winner == DRAW:
+        return 0, []
     if winner != 0:
         return winner * AI_SETTINGS["MAX_SCORE"], []
     
@@ -15,6 +17,7 @@ def simple_analysis(state, depth, alpha=-float('inf'), beta=float('inf')):
     if depth == 0:
         return evaluate_board(state), []
     
+    # 途中局面での千日手は引き分け扱い
     if state.is_repetition():
         return 0, []
 

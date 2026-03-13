@@ -2,6 +2,10 @@
 EMPTY = 0
 LION, GIRAFFE, ELEPHANT, CHICK, HEN = 1, 2, 3, 4, 5
 
+# 勝敗コード
+#  1: 先手勝ち, -1: 後手勝ち, 0: 継続, 2: 引き分け（千日手など）
+DRAW = 2
+
 # AIの強さ設定
 AI_SETTINGS = {
     "DEPTH": 5,          # 6以上にするとかなり手強くなります

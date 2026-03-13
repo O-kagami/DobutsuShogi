@@ -134,7 +134,8 @@ function updateUI(data) {
     allMoves = data.next_options || [];
     if (data.winner !== 0) {
         const msg = document.getElementById('win-message');
-        msg.innerText = data.winner === 1 ? "🎉 あなたの勝ち！" : "😱 AIの勝ち！";
+        if (data.winner === 2) msg.innerText = "引き分け（千日手）";
+        else msg.innerText = data.winner === 1 ? "🎉 あなたの勝ち！" : "😱 AIの勝ち！";
         msg.style.display = 'block';
         document.getElementById('status-text').innerText = "対局終了";
     } else {
