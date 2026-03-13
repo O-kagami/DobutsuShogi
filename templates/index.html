@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>どうぶつ将棋 Web Direct</title>
+    <title>どうぶつ将棋</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h1>🐾 どうぶつ将棋 Web Direct 🐾</h1>
+    <h1>🐾 どうぶつ将棋 🐾</h1>
     <div class="game-container">
         <div class="board-area">
             <div class="hand-area" id="hand2"></div>
@@ -37,13 +37,7 @@
                     <p class="w-desc"><strong>トライ：</strong><br>自分のライオンが敵陣の1段目に入ったら勝ち！<br><small>※すぐ取られる場合は不可</small></p>
                 </div>
                 <div class="win-cond-item">
-                    <div class="win-grid">
-                        <div class="w-cell">🦒</div><div class="w-cell">🦁</div><div class="w-cell">🦒</div>
-                        <div class="w-cell">🐘</div><div class="w-cell">🐘</div><div class="w-cell"></div>
-                        <div class="w-cell"></div><div class="w-cell"></div><div class="w-cell"></div>
-                        <div class="w-cell"></div><div class="w-cell"></div><div class="w-cell"></div>
-                    </div>
-                    <p class="w-desc"><strong>詰み：</strong><br>自分の手番で動かせる場所がなくなったら負け！</p>
+                    <p class="w-desc"><strong>相手の指し手がない：</strong><br>自分の手番で動かせる駒がなくなったら負け！</p>
                 </div>
             </div>
 
