@@ -12,7 +12,7 @@ PIECE_EMOJIS = {
 # --- 🌟 AIの強さ・性格チューニング設定 ---
 
 AI_SETTINGS = {
-    "DEPTH": 6,          # 読みの深さ（2：弱い、4：普通、6：強い）
+    "DEPTH": 4,          # 読みの深さ（2：弱い、4：普通、6：強い）
     "MAX_SCORE": 10000   # 詰みの状態の評価点
 }
 
@@ -21,7 +21,7 @@ AI_SETTINGS = {
 PIECE_SCORES = {
     LION: 10000,     # ライオン（取られたら負け）
     GIRAFFE: 500,    # キリン
-    ELEPHANT: 300,   # ゾウ
-    CHICK: 100,      # ヒヨコ
-    HEN: 700         # ニワトリ
+    ELEPHANT: 400,   # ゾウ
+    CHICK: 200,      # ヒヨコ
+    HEN: 800         # ニワトリ
 }
