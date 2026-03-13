@@ -4,54 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>どうぶつ将棋 Web Direct</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; background-color: #fdf6e3; padding: 10px; color: #5d4037; }
-        .game-container { display: flex; justify-content: center; align-items: flex-start; gap: 20px; flex-wrap: wrap; margin-top: 10px; }
-        
-        /* 盤面エリア */
-        .hand-area { background: #d7ccc8; border-radius: 8px; padding: 8px; min-height: 50px; width: 240px; margin: 5px auto; display: flex; justify-content: center; align-items: center; gap: 10px; font-size: 1.8rem; border: 1px inset #8d6e63; }
-        .hand-piece { cursor: pointer; transition: 0.2s; padding: 2px; border-radius: 4px; display: inline-block; }
-        .hand-piece.selected { background: #fff176; box-shadow: 0 0 8px #fbc02d; }
-        
-        .board-container { position: relative; display: inline-block; padding: 25px 35px 5px 35px; background: #8d6e63; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .board { display: grid; grid-template-columns: repeat(3, 80px); background: #e0c080; border: 2px solid #5d4037; }
-        .cell { width: 80px; height: 100px; border: 1px solid #5d4037; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; background: white; transition: 0.2s; position: relative; }
-        .cell.opponent { transform: rotate(180deg); color: #d32f2f; }
-        .cell.selected { background-color: #fff176 !important; }
-
-        /* 🌟 動ける場所のハイライト（指定色: #ff7b76） */
-        .cell.highlight::after { 
-            content: ""; position: absolute; width: 25px; height: 25px; 
-            background: #ff7b76; opacity: 0.7; border-radius: 50%; pointer-events: none; 
-        }
-        
-        /* 凡例パネル */
-        .side-panels { display: flex; flex-direction: column; gap: 15px; }
-        .legend-panel { background: #efebe9; padding: 12px; border-radius: 10px; border: 2px solid #8d6e63; width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: left; }
-        .legend-panel h3 { margin: 0 0 8px 0; font-size: 0.95rem; border-bottom: 2px solid #8d6e63; padding-bottom: 3px; text-align: center; }
-        
-        .legend-item { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding-bottom: 5px; border-bottom: 1px solid #d7ccc8; }
-        .legend-item:last-child { border-bottom: none; }
-        .piece-icon { font-size: 1.6rem; background: white; padding: 3px; border-radius: 4px; border: 1px solid #ccc; }
-
-        /* 🌟 ミニマム升目（指定色: #ff7b76） */
-        .mini-grid { display: grid; grid-template-columns: repeat(3, 18px); grid-template-rows: repeat(3, 18px); background: #e0c080; border: 1px solid #5d4037; }
-        .m-cell { border: 1px solid #5d4037; background: white; display: flex; align-items: center; justify-content: center; font-size: 0.5rem; }
-        .m-cell.h::after { content: "●"; color: #ff7b76; font-size: 0.8rem; }
-        .m-cell.c { background: #eee; font-size: 0.7rem; }
-
-        .win-cond-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
-        .win-grid { display: grid; grid-template-columns: repeat(3, 15px); grid-template-rows: repeat(4, 15px); background: #e0c080; border: 1px solid #5d4037; flex-shrink: 0; }
-        .w-cell { border: 1px solid #5d4037; background: white; display: flex; align-items: center; justify-content: center; font-size: 0.4rem; }
-        .w-goal { background: #ffcdd2; }
-        .w-desc { font-size: 0.8rem; line-height: 1.2; margin: 0; }
-
-        .controls { margin-top: 15px; }
-        button { padding: 10px 20px; background: #5d4037; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        #win-message { display: none; font-size: 1.5rem; font-weight: bold; color: #d32f2f; margin: 10px; }
-
-        @media (max-width: 800px) { .game-container { flex-direction: column; align-items: center; } .side-panels { width: 90%; max-width: 320px; } }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <h1>🐾 どうぶつ将棋 Web Direct 🐾</h1>
@@ -127,6 +80,11 @@
 
     <div class="controls">
         <div id="win-message"></div>
+        
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        
         <p id="status-text">あなたの番です</p>
         <div style="display:flex; gap:10px; justify-content:center;">
             <button onclick="undoMove()" style="background:#f39c12;">待った</button>
@@ -134,77 +92,9 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
     <script>
-        let allMoves = {{ move_options|tojson }};
-        let currentBoard = {{ board|tojson }};
-        let selected = null;
-        const emojis = {1:"🦁", 2:"🦒", 3:"🐘", 4:"🐥", 5:"🐔", "-1":"🦁", "-2":"🦒", "-3":"🐘", "-4":"🐥", "-5":"🐔", 0:""};
-
-        function renderAll(board, h1, h2) {
-            currentBoard = board;
-            const bDiv = document.getElementById('board'); bDiv.innerHTML = '';
-            board.forEach((row, r) => row.forEach((cell, c) => {
-                const d = document.createElement('div');
-                d.className = `cell ${cell < 0 ? 'opponent' : ''}`;
-                d.innerText = emojis[cell];
-                d.onclick = () => handleCellClick(r, c);
-                bDiv.appendChild(d);
-            }));
-            renderHand('hand1', h1, 1); renderHand('hand2', h2, -1);
-        }
-
-        function renderHand(id, hand, owner) {
-            const el = document.getElementById(id); el.innerHTML = '';
-            for (let p in hand) for (let i = 0; i < hand[p]; i++) {
-                const s = document.createElement('span'); s.className = 'hand-piece';
-                s.innerText = emojis[p];
-                if (owner === 1) s.onclick = (e) => { e.stopPropagation(); handleHandPieceClick(parseInt(p), s); };
-                el.appendChild(s);
-            }
-        }
-
-        function handleCellClick(r, c) {
-            if (selected) {
-                const move = allMoves.find(m => m.to_r === r && m.to_c === c && m.type === selected.type && (selected.type === 'move' ? (m.from_r === selected.r && m.from_c === selected.c) : (m.p_type === selected.p_type)));
-                if (move) { executeMove(move.id); return; }
-            }
-            if (currentBoard[r][c] > 0) selectPiece('move', r, c, currentBoard[r][c]);
-            else clearSelection();
-        }
-
-        function handleHandPieceClick(p_type, element) { selectPiece('drop', -1, -1, p_type); element.classList.add('selected'); }
-
-        function selectPiece(type, r, c, p_type) {
-            clearSelection();
-            selected = {type, r, c, p_type};
-            if (type === 'move') document.querySelectorAll('.cell')[r * 3 + c].classList.add('selected');
-            allMoves.filter(m => m.type === type && m.p_type === p_type && (type === 'drop' || (m.from_r === r && m.from_c === c)))
-                    .forEach(m => document.querySelectorAll('.cell')[m.to_r * 3 + m.to_c].classList.add('highlight'));
-        }
-
-        function clearSelection() { selected = null; document.querySelectorAll('.cell').forEach(el => el.classList.remove('selected', 'highlight')); document.querySelectorAll('.hand-piece').forEach(el => el.classList.remove('selected')); }
-
-        async function executeMove(idx) {
-            clearSelection(); const status = document.getElementById('status-text');
-            document.getElementById('board').style.pointerEvents = 'none';
-            const res = await fetch('/battle', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({move_idx: idx}) });
-            const data = await res.json();
-            if (data.mid_board) { renderAll(data.mid_board, data.mid_hand1, data.mid_hand2); status.innerText = "🤖 AIが思考中..."; await new Promise(r => setTimeout(r, 1200)); }
-            updateUI(data);
-        }
-
-        function updateUI(data) {
-            renderAll(data.board, data.hand1, data.hand2); allMoves = data.next_options || [];
-            if (data.winner !== 0) {
-                const msg = document.getElementById('win-message');
-                msg.innerText = data.winner === 1 ? "🎉 あなたの勝ち！" : "😱 AIの勝ち！";
-                msg.style.display = 'block'; document.getElementById('status-text').innerText = "対局終了";
-            } else { document.getElementById('board').style.pointerEvents = 'auto'; document.getElementById('status-text').innerText = "あなたの番です"; }
-        }
-
-        async function undoMove() { const res = await fetch('/undo', { method: 'POST' }); if (res.ok) { updateUI(await res.json()); document.getElementById('win-message').style.display = 'none'; } }
-
-        renderAll({{ board|tojson }}, {{ hand1|tojson }}, {{ hand2|tojson }});
+        initGame({{ move_options|tojson }}, {{ board|tojson }}, {{ hand1|tojson }}, {{ hand2|tojson }});
     </script>
 </body>
 </html>

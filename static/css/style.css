@@ -1,0 +1,56 @@
+body { font-family: sans-serif; text-align: center; background-color: #fdf6e3; padding: 10px; color: #5d4037; }
+.game-container { display: flex; justify-content: center; align-items: flex-start; gap: 20px; flex-wrap: wrap; margin-top: 10px; }
+
+/* 盤面エリア */
+.hand-area { background: #d7ccc8; border-radius: 8px; padding: 8px; min-height: 50px; width: 240px; margin: 5px auto; display: flex; justify-content: center; align-items: center; gap: 10px; font-size: 1.8rem; border: 1px inset #8d6e63; }
+.hand-piece { cursor: pointer; transition: 0.2s; padding: 2px; border-radius: 4px; display: inline-block; }
+.hand-piece.selected { background: #fff176; box-shadow: 0 0 8px #fbc02d; }
+
+.board-container { position: relative; display: inline-block; padding: 25px 35px 5px 35px; background: #8d6e63; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+.board { display: grid; grid-template-columns: repeat(3, 80px); background: #e0c080; border: 2px solid #5d4037; }
+.cell { width: 80px; height: 100px; border: 1px solid #5d4037; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; background: white; transition: 0.2s; position: relative; }
+.cell.opponent { transform: rotate(180deg); color: #d32f2f; }
+.cell.selected { background-color: #fff176 !important; }
+
+/* 🌟 動ける場所のハイライト (#ff7b76) */
+.cell.highlight::after { 
+    content: ""; position: absolute; width: 25px; height: 25px; 
+    background: #ff7b76; opacity: 0.7; border-radius: 50%; pointer-events: none; 
+}
+
+/* 🌟 AI思考中のプログレスバー */
+#progress-container {
+    width: 240px; height: 8px; background-color: #d7ccc8; border-radius: 4px;
+    margin: 10px auto; overflow: hidden; display: none; /* AIの番の時だけ表示 */
+}
+#progress-bar {
+    width: 0%; height: 100%; background-color: #ff7b76; /* ご指定の色 */
+    transition: width 0.1s linear;
+}
+
+/* 凡例パネル */
+.side-panels { display: flex; flex-direction: column; gap: 15px; }
+.legend-panel { background: #efebe9; padding: 12px; border-radius: 10px; border: 2px solid #8d6e63; width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: left; }
+.legend-panel h3 { margin: 0 0 8px 0; font-size: 0.95rem; border-bottom: 2px solid #8d6e63; padding-bottom: 3px; text-align: center; }
+
+.legend-item { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding-bottom: 5px; border-bottom: 1px solid #d7ccc8; }
+.legend-item:last-child { border-bottom: none; }
+.piece-icon { font-size: 1.6rem; background: white; padding: 3px; border-radius: 4px; border: 1px solid #ccc; }
+
+.mini-grid { display: grid; grid-template-columns: repeat(3, 18px); grid-template-rows: repeat(3, 18px); background: #e0c080; border: 1px solid #5d4037; }
+.m-cell { border: 1px solid #5d4037; background: white; display: flex; align-items: center; justify-content: center; font-size: 0.5rem; }
+.m-cell.h::after { content: "●"; color: #ff7b76; font-size: 0.8rem; }
+.m-cell.c { background: #eee; font-size: 0.7rem; }
+
+/* 勝利条件 */
+.win-cond-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.win-grid { display: grid; grid-template-columns: repeat(3, 15px); grid-template-rows: repeat(4, 15px); background: #e0c080; border: 1px solid #5d4037; flex-shrink: 0; }
+.w-cell { border: 1px solid #5d4037; background: white; display: flex; align-items: center; justify-content: center; font-size: 0.4rem; }
+.w-goal { background: #ffcdd2; }
+.w-desc { font-size: 0.8rem; line-height: 1.2; margin: 0; }
+
+.controls { margin-top: 15px; }
+button { padding: 10px 20px; background: #5d4037; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+#win-message { display: none; font-size: 1.5rem; font-weight: bold; color: #d32f2f; margin: 10px; }
+
+@media (max-width: 800px) { .game-container { flex-direction: column; align-items: center; } .side-panels { width: 90%; max-width: 320px; } }
