@@ -2,25 +2,30 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>どうぶつ将棋プログラム</title>
+    <title>Taiki's どうぶつ将棋 Web</title>
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #fdf6e3; padding: 20px; color: #5d4037; }
         .hand-area { background: #d7ccc8; border-radius: 8px; padding: 10px; min-height: 50px; width: 240px; margin: 10px auto; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 1.8rem; border: 1px inset #8d6e63; }
         .board-container { position: relative; display: inline-block; padding: 30px 40px 10px 40px; background: #8d6e63; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .label-cols { position: absolute; top: 5px; left: 40px; display: flex; width: 240px; justify-content: space-around; color: white; font-weight: bold; font-size: 1.2rem; }
-        .label-rows { position: absolute; left: 10px; top: 30px; display: flex; flex-direction: column; height: 400px; justify-content: space-around; color: white; font-weight: bold; font-size: 1.2rem; }
+        .label-cols { position: absolute; top: 5px; left: 40px; display: flex; width: 240px; justify-content: space-around; color: white; font-weight: bold; }
+        .label-rows { position: absolute; left: 10px; top: 30px; display: flex; flex-direction: column; height: 400px; justify-content: space-around; color: white; font-weight: bold; }
         .board { display: grid; grid-template-columns: repeat(3, 80px); background: #e0c080; border: 2px solid #5d4037; }
-        .cell { width: 80px; height: 100px; border: 1px solid #5d4037; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; background: white; }
+        .cell { width: 80px; height: 100px; border: 1px solid #5d4037; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; background: white; transition: 0.3s; }
+        
+        /* 相手の駒を180度回転 */
+        .cell.opponent { transform: rotate(180deg); color: #d32f2f; }
+        #hand2 span { display: inline-block; transform: rotate(180deg); }
+
         .controls { margin-top: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
         .move-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         button { padding: 12px; background: #5d4037; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         button:hover { background: #795548; }
         #win-message { display: none; font-size: 1.8rem; font-weight: bold; color: #d32f2f; margin: 20px; }
-        .sub-controls { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        .sub-btn { background: #888; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <h1>どうぶつ将棋 🦊</h1>
+    <h1>🐾 どうぶつ将棋 Web 🐾</h1>
     <div class="hand-area" id="hand2">
         {% for p, count in hand2.items() %}{% for _ in range(count) %}<span>{{ get_emoji(p|int * -1) }}</span>{% endfor %}{% endfor %}
     </div>
@@ -29,7 +34,7 @@
         <div class="label-rows"><span>一</span><span>二</span><span>三</span><span>四</span></div>
         <div id="board" class="board">
             {% for r in range(4) %}{% for c in range(3) %}
-                <div class="cell">{{ get_emoji(board[r][c]) }}</div>
+                <div class="cell {% if board[r][c] < 0 %}opponent{% endif %}">{{ get_emoji(board[r][c]) }}</div>
             {% endfor %}{% endfor %}
         </div>
     </div>
@@ -38,49 +43,71 @@
     </div>
     <div class="controls">
         <div id="win-message"></div>
-        <p id="status-text" style="font-weight: bold;">あなたの番です（▲先手）</p>
+        <p id="status-text" style="font-weight: bold;">あなたの番です</p>
         <div id="move-buttons" class="move-grid">
             {% for move in move_options %}
                 <button onclick="playTurn({{ move.id }})">{{ move.text }}</button>
             {% endfor %}
         </div>
-        <div class="sub-controls">
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
             <button onclick="undoMove()" style="background:#f39c12;">待った</button>
-            <button onclick="location.href='/'" style="background:#888;">最初から</button>
+            <button onclick="location.href='/'" class="sub-btn">リセット</button>
         </div>
     </div>
     <script>
-        const emojis = {1:"🦁", 2:"🦒", 3:"🐘", 4:"🐥", 5:"🐔", "-1":"▽🦁", "-2":"▽🦒", "-3":"▽🐘", "-4":"▽🐥", "-5":"▽🐔", 0:""};
+        const emojis = {1:"🦁", 2:"🦒", 3:"🐘", 4:"🐥", 5:"🐔", "-1":"🦁", "-2":"🦒", "-3":"🐘", "-4":"🐥", "-5":"🐔", 0:""};
+        
         async function playTurn(idx) {
             const btns = document.getElementById('move-buttons');
             const status = document.getElementById('status-text');
             btns.style.pointerEvents = 'none'; btns.style.opacity = '0.5';
-            status.innerText = "Computerが思考中...";
+            
             const res = await fetch('/battle', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({move_idx: idx}) });
             const data = await res.json();
+
+            // 自分の手を画面に反映
+            if (data.mid_board) {
+                renderState(data.mid_board, data.mid_hand1, data.mid_hand2);
+                status.innerText = "🤖 AIが考えています...";
+                await new Promise(r => setTimeout(r, 1200)); // 思考演出用の待機
+            }
+            
+            // AIの手を画面に反映
             updateUI(data);
-            btns.style.pointerEvents = 'auto'; btns.style.opacity = '1';
+            if (data.winner === 0) {
+                btns.style.pointerEvents = 'auto'; btns.style.opacity = '1';
+                status.innerText = "あなたの番です";
+            }
         }
+
         async function undoMove() {
             const res = await fetch('/undo', { method: 'POST' });
             if (res.ok) {
                 const data = await res.json();
                 updateUI(data);
                 document.getElementById('win-message').style.display = 'none';
-            } else { alert("これ以上戻れません！"); }
+            }
         }
-        function updateUI(data) {
+
+        function renderState(board, hand1, hand2) {
             const boardDiv = document.getElementById('board');
             boardDiv.innerHTML = '';
-            data.board.forEach(row => row.forEach(cell => {
-                const div = document.createElement('div'); div.className = 'cell';
+            board.forEach(row => row.forEach(cell => {
+                const div = document.createElement('div');
+                div.className = 'cell';
+                if (cell < 0) div.classList.add('opponent');
                 div.innerText = emojis[cell] || (cell < 0 ? emojis[cell.toString()] : "");
                 boardDiv.appendChild(div);
             }));
-            updateHand('hand1', data.hand1, 1); updateHand('hand2', data.hand2, -1);
+            updateHandUI('hand1', hand1, 1);
+            updateHandUI('hand2', hand2, -1);
+        }
+
+        function updateUI(data) {
+            renderState(data.board, data.hand1, data.hand2);
             if (data.winner !== 0) {
                 const msg = document.getElementById('win-message');
-                msg.innerText = data.winner === 1 ? "あなたの勝ちです！やったね！😊" : " AIの勝ち!😂";
+                msg.innerText = data.winner === 1 ? "🎉 あなたの勝ち！" : "😱 AIの勝ち！";
                 msg.style.display = 'block'; document.getElementById('move-buttons').innerHTML = '';
                 document.getElementById('status-text').innerText = "対局終了";
             } else {
@@ -90,10 +117,10 @@
                     const btn = document.createElement('button'); btn.innerText = opt.text;
                     btn.onclick = () => playTurn(opt.id); btnContainer.appendChild(btn);
                 });
-                document.getElementById('status-text').innerText = "あなたの番です（▲先手）";
             }
         }
-        function updateHand(id, hand, turn) {
+
+        function updateHandUI(id, hand, turn) {
             const area = document.getElementById(id); area.innerHTML = '';
             for (let p in hand) for (let i = 0; i < hand[p]; i++) {
                 const span = document.createElement('span'); span.innerText = emojis[p * turn]; area.appendChild(span);

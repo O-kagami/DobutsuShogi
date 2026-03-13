@@ -3,4 +3,3 @@ tqdm
 gunicorn
 pandas
 tabulate
-copy
