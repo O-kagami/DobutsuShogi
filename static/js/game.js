@@ -81,7 +81,7 @@ async function executeMove(idx) {
     
     // UIをロックして思考中表示
     boardEl.style.pointerEvents = 'none';
-    status.innerText = "🤖 AIが考えています...";
+    status.innerText = "🤖 コンピューターが考えています...";
     progContainer.style.display = 'block';
     progressBar.style.width = '0%';
 
@@ -92,8 +92,8 @@ async function executeMove(idx) {
         body: JSON.stringify({ move_idx: idx }) 
     });
 
-    // バーをアニメーションさせる（1.2秒）
-    const duration = 1200;
+    // バーをアニメーションさせる（AIの思考時間に合わせて約5秒）
+    const duration = 5000;
     const startTime = Date.now();
     const timer = setInterval(() => {
         const elapsed = Date.now() - startTime;
@@ -135,7 +135,7 @@ function updateUI(data) {
     if (data.winner !== 0) {
         const msg = document.getElementById('win-message');
         if (data.winner === 2) msg.innerText = "引き分け（千日手）";
-        else msg.innerText = data.winner === 1 ? "🎉 あなたの勝ち！やったね" : "😱 AIの勝ち！あなたの負け🤣";
+        else msg.innerText = data.winner === 1 ? "🎉 あなたの勝ち！やったね" : "😱 Computerの勝ち！あなたの負け🤣";
         msg.style.display = 'block';
         document.getElementById('status-text').innerText = "対局終了";
     } else {

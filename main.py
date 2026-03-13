@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request, jsonify, session
 from game_state import DobutsuShogiState
-from analyzer import simple_analysis
+from analyzer import time_limited_analysis
 from constants import *
 
 app = Flask(__name__)
@@ -66,7 +66,8 @@ def battle():
         if state.decide_winner() != 0:
             return jsonify({**mid_data, "winner": state.decide_winner(), "mid_board": mid_data["board"]})
 
-        _, ai_path = simple_analysis(state, AI_SETTINGS["DEPTH"])
+        # 時間制限付き探索でAIの手を決定
+        _, ai_path = time_limited_analysis(state, AI_SETTINGS.get("TIME_LIMIT_SEC", 1.0))
         if ai_path:
             state = state.make_move(ai_path[0][0])
         
