@@ -15,7 +15,9 @@ class DobutsuShogiState:
         
         # 履歴・メモ用のキー作成
         board_tuple = tuple(tuple(row) for row in self.board)
-        self.current_state_key = (board_tuple, self.turn)
+        hand_p1_tuple = tuple(sorted(self.hand_p1.items()))
+        hand_p2_tuple = tuple(sorted(self.hand_p2.items()))
+        self.current_state_key = (board_tuple, hand_p1_tuple, hand_p2_tuple, self.turn)
 
     def display(self):
         # 駒の番号をかわいい絵文字に変換する辞書
@@ -86,7 +88,7 @@ class DobutsuShogiState:
             return legal_moves
 
     def make_move(self, move):
-        new_board = copy.deepcopy(self.board)
+        new_board = [row[:] for row in self.board]
         new_h1, new_h2 = self.hand_p1.copy(), self.hand_p2.copy()
         
         if move[0] == 'move':
