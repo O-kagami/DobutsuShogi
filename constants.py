@@ -1,6 +1,7 @@
 # 駒の定義 🔢
 EMPTY = 0
 LION, GIRAFFE, ELEPHANT, CHICK, HEN = 1, 2, 3, 4, 5
+DRAW = 0
 
 # 視覚的にわかりやすくするための絵文字 🎨
 PIECE_EMOJIS = {

@@ -15,37 +15,14 @@ PIECE_TO_CHAR = {
 }
 CHAR_TO_PIECE = {v: k for k, v in PIECE_TO_CHAR.items()}
 
-def state_to_key(state):
-    board, hand1, hand2, turn = state
-    board_chars = []
-    for r in range(4):
-        for c in range(3):
-            board_chars.append(PIECE_TO_CHAR[board[r][c]])
-    board_str = "".join(board_chars)
-    
-    h1_str = "".join(str(x) for x in hand1)
-    h2_str = "".join(str(x) for x in hand2)
-    turn_str = "+" if turn == 1 else "-"
-    
-    return f"{board_str}_{h1_str}_{h2_str}_{turn_str}"
-
-def key_to_state(key):
-    parts = key.split('_')
-    board_str, h1_str, h2_str, turn_str = parts
-    
-    board = []
-    for r in range(4):
-        row = []
-        for c in range(3):
-            row.append(CHAR_TO_PIECE[board_str[r*3 + c]])
-        board.append(tuple(row))
-    board_tuple = tuple(board)
-    
-    hand1 = tuple(int(x) for x in h1_str)
-    hand2 = tuple(int(x) for x in h2_str)
-    turn = 1 if turn_str == "+" else -1
-    
-    return (board_tuple, hand1, hand2, turn)
+from state_utils import (
+    PIECE_TO_VAL,
+    pack_state_raw,
+    get_symmetric_state,
+    get_canonical_state,
+    get_active_perspective_state,
+    state_to_key
+)
 
 def get_piece_moves_light(r, c, piece, board, turn):
     p_abs = abs(piece)
@@ -121,29 +98,45 @@ def is_check_light(board, turn):
                             return True
     return False
 
+def can_capture_enemy_lion(state):
+    board, hand1, hand2, turn = state
+    enemy_lion = -turn * LION
+    el_pos = None
+    for r in range(4):
+        for c in range(3):
+            if board[r][c] == enemy_lion:
+                el_pos = (r, c)
+                break
+        if el_pos:
+            break
+            
+    if el_pos is None:
+        return True
+        
+    for r in range(4):
+        for c in range(3):
+            piece = board[r][c]
+            if piece * turn > 0:
+                moves = get_piece_moves_light(r, c, piece, board, turn)
+                for m in moves:
+                    if (m[3], m[4]) == el_pos:
+                        return True
+    return False
+
 def decide_winner_light(state):
     board, hand1, hand2, turn = state
     
-    l1, l2 = None, None
-    for r in range(4):
-        for c in range(3):
-            if board[r][c] == LION:
-                l1 = (r, c)
-            elif board[r][c] == -LION:
-                l2 = (r, c)
-                
-    # 1. キャッチ
-    if l2 is None:
-        return 1
-    if l1 is None:
-        return -1
+    # 1. 勝ち確定局面の判定 (手番のプレイヤーが敵のライオンを捕まえられる)
+    if can_capture_enemy_lion(state):
+        return turn
         
-    # 2. トライ
-    if l1[0] == 0 and not is_check_light(board, 1):
-        return 1
-    if l2[0] == 3 and not is_check_light(board, -1):
-        return -1
-        
+    # 2. 負け確定局面の判定 (敵のライオンが自陣にいる)
+    enemy_lion = -turn * LION
+    own_home_row = 3 if turn == 1 else 0
+    for c in range(3):
+        if board[own_home_row][c] == enemy_lion:
+            return -turn
+            
     return 0
 
 def make_move_light(state, move):
@@ -194,6 +187,9 @@ def get_legal_moves_light(state):
     if decide_winner_light(state) != 0:
         return []
 
+    # 💡 最適化：現在王手されているか
+    in_check = is_check_light(board, turn)
+
     all_moves = []
     for r in range(4):
         for c in range(3):
@@ -215,6 +211,13 @@ def get_legal_moves_light(state):
     for move in all_moves:
         if move[0] == 'move':
             _, fr, fc, tr, tc = move
+            piece = board_lst[fr][fc]
+            
+            # 💡 最適化: 王手されていないなら、ライオン以外の移動で自殺手にならない
+            if abs(piece) != LION and not in_check:
+                legal_moves.append(move)
+                continue
+            
             orig_from = board_lst[fr][fc]
             orig_to = board_lst[tr][tc]
             
@@ -229,6 +232,11 @@ def get_legal_moves_light(state):
             if not check:
                 legal_moves.append(move)
         elif move[0] == 'drop':
+            # 💡 打ち込みはライオンではないため、現在王手されていないならチェック不要
+            if not in_check:
+                legal_moves.append(move)
+                continue
+                
             _, p_type, tr, tc = move
             board_lst[tr][tc] = p_type * turn
             
@@ -255,7 +263,8 @@ def solve():
     
     # 1. 状態空間の列挙 (BFS)
     print("1. 状態空間の列挙中...")
-    state_to_id = {initial_state: 0}
+    init_packed = pack_state_raw(initial_state)
+    state_to_id = {init_packed: 0}
     id_to_state = [initial_state]
     queue = deque([0])
     next_ids = []
@@ -269,13 +278,14 @@ def solve():
         u_nexts = []
         for m in legal_moves:
             next_state = make_move_light(u_state, m)
-            if next_state not in state_to_id:
+            packed_next = pack_state_raw(next_state)
+            if packed_next not in state_to_id:
                 next_id = len(id_to_state)
-                state_to_id[next_state] = next_id
+                state_to_id[packed_next] = next_id
                 id_to_state.append(next_state)
                 queue.append(next_id)
             else:
-                next_id = state_to_id[next_state]
+                next_id = state_to_id[packed_next]
             u_nexts.append(next_id)
             
         next_ids.append(u_nexts)
@@ -381,14 +391,21 @@ def solve():
     print("4. データベースの保存中...")
     db = {}
     for u in tqdm(range(N), desc="  DB構築", unit="局面"):
-        key = state_to_key(id_to_state[u])
-        db[key] = (V[u], dist[u])
+        state = id_to_state[u]
+        val = V[u]
+        d = dist[u]
+        
+        turn = state[3]
+        val_canonical = val * turn if val != 0 else 0
+        
+        key = state_to_key(state)
+        db[key] = (val_canonical, d)
         
     db_file = "solved_db.json.gz"
     with gzip.open(db_file, "wt", encoding="utf-8") as f:
         json.dump(db, f)
         
-    print(f"🎉 データベースを {db_file} に保存しました！")
+    print(f"🎉 データベースを {db_file} に保存しました！(総キー数: {len(db)})")
     print(f"⏱️ 総実行時間: {time.time() - start_time:.2f}秒")
 
 if __name__ == "__main__":

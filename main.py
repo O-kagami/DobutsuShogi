@@ -1,7 +1,7 @@
 import time
 from tqdm import tqdm
 from game_state import DobutsuShogiState
-from analyzer import simple_analysis, solved_analysis, solved_db, load_db, get_state_key, memo
+from analyzer import simple_analysis, solved_analysis, solved_db, load_db, get_state_key, memo, get_db_value
 from player import get_human_move
 
 def format_kifu(path, start_turn=1):
@@ -33,8 +33,8 @@ def run_analysis():
     if solved_db is not None:
         print("💡 完全解析データベースを使用して解析中...")
         best_score, best_path = solved_analysis(state)
-        key = get_state_key(state)
-        _, dist = solved_db.get(key, (0, 0))
+        db_res = get_db_value(state)
+        dist = db_res[1] if db_res is not None else 0
         dist_str = f" ({dist} 手詰)" if best_score != 0 and dist != 999 else ""
     else:
         print("⚠️ 完全解析データベースが見つからないため、ミニマックス法で探索します。")

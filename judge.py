@@ -26,24 +26,42 @@ def is_check(state, turn):
     return False
 
 def decide_winner(state):
-    """勝敗判定（キャッチ・トライ・詰み）"""
-    l1_pos, l2_pos = None, None
+    """勝敗判定（新定義：勝ち確定局面と負け確定局面）"""
+    # 千日手（引き分け）
+    if getattr(state, "is_repetition", None) and state.is_repetition():
+        return DRAW
+
+    # 1. 勝ち確定局面の判定 (手番のプレイヤーが敵のライオンを捕まえられる)
+    enemy_lion = -state.turn * LION
+    el_pos = None
     for r in range(4):
         for c in range(3):
-            if state.board[r][c] == LION: l1_pos = (r, c)
-            elif state.board[r][c] == -LION: l2_pos = (r, c)
+            if state.board[r][c] == enemy_lion:
+                el_pos = (r, c)
+                break
+        if el_pos:
+            break
+            
+    if el_pos is None:
+        return state.turn
 
-    # 1. キャッチ（ライオンが取られた）
-    if l2_pos is None: return 1
-    if l1_pos is None: return -1
+    for r in range(4):
+        for c in range(3):
+            piece = state.board[r][c]
+            if piece * state.turn > 0:
+                moves = get_piece_moves(r, c, piece, state.board, state.turn)
+                for m in moves:
+                    if (m[3], m[4]) == el_pos:
+                        return state.turn
 
-    # 2. トライ（敵陣の最奥に到達し、かつ次の手で取られない）
-    if l1_pos[0] == 0 and not is_check(state, 1): return 1
-    if l2_pos[0] == 3 and not is_check(state, -1): return -1
+    # 2. 負け確定局面の判定 (敵のライオンが自陣にいる)
+    own_home_row = 3 if state.turn == 1 else 0
+    for c in range(3):
+        if state.board[own_home_row][c] == enemy_lion:
+            return -state.turn
 
-    # 🌟 3. 動けない（詰み）の判定を追加
-    # 現在の手番のプレイヤーに動かせる手（合法手）が一つもなければ、その人の負け
+    # 3. 動けない（詰み）の判定
     if not state.get_legal_moves():
-        return -state.turn # 先手(1)が動けなければ -1(後手勝ち)、逆なら 1
+        return -state.turn
 
     return 0

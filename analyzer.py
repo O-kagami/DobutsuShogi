@@ -2,6 +2,7 @@ import os
 import gzip
 import json
 from constants import *
+from state_utils import state_to_key
 
 solved_db = None
 DB_FILE = "solved_db.json.gz"
@@ -22,24 +23,27 @@ load_db()
 # メモ化用の辞書
 memo = {}
 
-PIECE_TO_CHAR = {
-    0: '.',
-    1: 'L', 2: 'G', 3: 'E', 4: 'C', 5: 'H',
-    -1: 'l', -2: 'g', -3: 'e', -4: 'c', -5: 'h'
-}
-
 def get_state_key(state):
-    board_chars = []
-    for r in range(4):
-        for c in range(3):
-            board_chars.append(PIECE_TO_CHAR[state.board[r][c]])
-    board_str = "".join(board_chars)
-    
-    h1_str = f"{state.hand_p1.get(2,0)}{state.hand_p1.get(3,0)}{state.hand_p1.get(4,0)}"
-    h2_str = f"{state.hand_p2.get(2,0)}{state.hand_p2.get(3,0)}{state.hand_p2.get(4,0)}"
-    turn_str = "+" if state.turn == 1 else "-"
-    
-    return f"{board_str}_{h1_str}_{h2_str}_{turn_str}"
+    """
+    DobutsuShogiState オブジェクトをシリアライズ可能な状態タプルに変換し、
+    一意の正規化された状態キー（15文字の16進数文字列）を生成します。
+    """
+    board_tuple = tuple(tuple(row) for row in state.board)
+    h1 = (state.hand_p1.get(2, 0), state.hand_p1.get(3, 0), state.hand_p1.get(4, 0))
+    h2 = (state.hand_p2.get(2, 0), state.hand_p2.get(3, 0), state.hand_p2.get(4, 0))
+    state_tuple = (board_tuple, h1, h2, state.turn)
+    return state_to_key(state_tuple)
+
+def get_db_value(state):
+    if solved_db is None:
+        return None
+    key = get_state_key(state)
+    if key not in solved_db:
+        return None
+    val, dist = solved_db[key]
+    if state.turn == -1 and val != 0:
+        val = -val
+    return val, dist
 
 def solved_analysis(state):
     """
@@ -47,24 +51,20 @@ def solved_analysis(state):
     (評価値, 最善手順のリスト)
     ※戻り値のフォーマットは simple_analysis と同一にします。
     """
-    if solved_db is None:
+    db_res = get_db_value(state)
+    if db_res is None:
         return None
         
-    key = get_state_key(state)
-    if key not in solved_db:
-        return None
-        
-    val, dist = solved_db[key]
-    
+    val, dist = db_res
     if state.decide_winner() != 0:
         return val, []
         
     path = []
     current = state
+    key = get_state_key(state)
     visited_keys = {key}
     
     for _ in range(200):
-        curr_key = get_state_key(current)
         if current.decide_winner() != 0:
             break
         curr_moves = current.get_legal_moves()
@@ -74,24 +74,29 @@ def solved_analysis(state):
         curr_candidates = []
         for m in curr_moves:
             ns = current.make_move(m)
-            nk = get_state_key(ns)
-            if nk in solved_db:
-                nv, nd = solved_db[nk]
+            db_res = get_db_value(ns)
+            if db_res is not None:
+                nv, nd = db_res
+                nk = get_state_key(ns)
                 curr_candidates.append((m, nv, nd, ns, nk))
                 
         if not curr_candidates:
             break
             
-        if current.turn == 1:
-            curr_candidates.sort(
-                key=lambda x: (1000 - x[2] if x[1] == 1 else (0 if x[1] == 0 else -1000 + x[2])),
-                reverse=True
-            )
-        else:
-            curr_candidates.sort(
-                key=lambda x: (1000 - x[2] if x[1] == -1 else (0 if x[1] == 0 else -1000 + x[2])),
-                reverse=True
-            )
+        # 手番側の視点からの評価値と距離に基づいて候補手をソート
+        moving_player = current.turn
+        def get_sort_key(candidate):
+            # candidate = (move, nv, nd, ns, nk)
+            _, nv, nd, _, _ = candidate
+            perspective_val = nv * moving_player
+            if perspective_val == 1:
+                return 1000 - nd
+            elif perspective_val == 0:
+                return 0
+            else:
+                return -1000 + nd
+
+        curr_candidates.sort(key=get_sort_key, reverse=True)
             
         best_cand = curr_candidates[0]
         if best_cand[4] in visited_keys:
@@ -127,9 +132,10 @@ def simple_analysis(state, depth):
     if not moves:
         return -state.turn, []
 
-    # メモ化のチェック（盤面、手番、深さをキーにする）
-    board_key = (tuple(tuple(r) for r in state.board), state.turn, depth)
-    # ※手順を正確に作り直すため、ここでは評価値だけを利用するのではなく、探索を行います。
+    # メモ化のチェック
+    key = (state.current_state_key, depth)
+    if key in memo:
+        return memo[key]
 
     if state.turn == 1: # 先手番（最大化）
         best_value = -float('inf')
@@ -171,4 +177,5 @@ def simple_analysis(state, depth):
             if best_value == -1: # 勝利確定なら枝刈り
                 break
 
+    memo[key] = (best_value, best_path)
     return best_value, best_path
