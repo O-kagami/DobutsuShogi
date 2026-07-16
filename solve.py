@@ -87,34 +87,36 @@ def is_check_light(board, turn):
         return False
 
     enemy = -turn
-    for r in range(4):
-        for c in range(3):
-            piece = board[r][c]
+    # ライオンの周囲8マスを調べる (スライド駒がないため、王手は隣接マスからのみ発生する)
+    for dr, dc in [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)]:
+        er, ec = lr + dr, lc + dc
+        if 0 <= er < 4 and 0 <= ec < 3:
+            piece = board[er][ec]
             if piece * enemy > 0:
-                dr, dc = lr - r, lc - c
                 p_abs = abs(piece)
+                tr, tc = -dr, -dc # 敵からライオンへの相対座標
+                
                 if p_abs == LION:
-                    if abs(dr) <= 1 and abs(dc) <= 1:
-                        return True
+                    return True
                 elif p_abs == GIRAFFE:
-                    if (abs(dr) == 1 and dc == 0) or (dr == 0 and abs(dc) == 1):
+                    if (abs(tr) == 1 and tc == 0) or (tr == 0 and abs(tc) == 1):
                         return True
                 elif p_abs == ELEPHANT:
-                    if abs(dr) == 1 and abs(dc) == 1:
+                    if abs(tr) == 1 and abs(tc) == 1:
                         return True
                 elif p_abs == CHICK:
                     if piece == CHICK: # 先手ひよこ
-                        if dr == -1 and dc == 0:
+                        if tr == -1 and tc == 0:
                             return True
                     else: # 後手ひよこ
-                        if dr == 1 and dc == 0:
+                        if tr == 1 and tc == 0:
                             return True
                 elif p_abs == HEN:
-                    if piece > 0: # 先手鶏の動き
-                        if (dr, dc) in [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (-1,1)]:
+                    if piece > 0: # 先手金
+                        if (tr, tc) in [(-1,0), (1,0), (0,-1), (0,1), (-1,-1), (-1,1)]:
                             return True
-                    else: # 後手鶏
-                        if (dr, dc) in [(-1,0), (1,0), (0,-1), (0,1), (1,-1), (1,1)]:
+                    else: # 後手金
+                        if (tr, tc) in [(-1,0), (1,0), (0,-1), (0,1), (1,-1), (1,1)]:
                             return True
     return False
 
@@ -208,7 +210,6 @@ def get_legal_moves_light(state):
                         all_moves.append(('drop', p_type, r, c))
 
     legal_moves = []
-    # ボードコピーを一回だけ作成し、差分更新でチェックを高速化
     board_lst = [list(row) for row in board]
     for move in all_moves:
         if move[0] == 'move':
@@ -240,7 +241,7 @@ def get_legal_moves_light(state):
     return legal_moves
 
 def solve():
-    print("🐾 どうぶつ将棋 完全解析開始 (最適化版) 🐾")
+    print("🐾 どうぶつ将棋 完全解析開始 (ウルトラ最適化版) 🐾")
     start_time = time.time()
     
     initial_board = (
@@ -280,7 +281,7 @@ def solve():
         
         step += 1
         if step % 200000 == 0:
-            print(f"  探索済み局面数: {step} / 発見した局面数: {len(id_to_state)}")
+            print(f"  探索済み局面数: {step} / 発見した局面数: {len(id_to_state)} (経過時間: {time.time() - start_time:.2f}秒)")
 
     N = len(id_to_state)
     print(f"  状態空間の列挙完了。総局面数: {N}")
@@ -350,7 +351,7 @@ def solve():
                     Q.append(v)
 
         if resolved_count % 200000 == 0:
-            print(f"  解析済み局面数: {resolved_count} / {N}")
+            print(f"  解析済み局面数: {resolved_count} / {N} (経過時間: {time.time() - start_time:.2f}秒)")
 
     print("  後退解析完了。未確定局面（引き分け）の処理中...")
     draw_count = 0

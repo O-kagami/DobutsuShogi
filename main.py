@@ -1,7 +1,7 @@
 import time
 from tqdm import tqdm
 from game_state import DobutsuShogiState
-from analyzer import simple_analysis, solved_analysis, solved_db, load_db, get_state_key
+from analyzer import simple_analysis, solved_analysis, solved_db, load_db, get_state_key, memo
 from player import get_human_move
 
 def format_kifu(path, start_turn=1):
