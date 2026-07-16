@@ -2,6 +2,7 @@ import gzip
 import json
 from collections import deque
 import time
+from tqdm import tqdm
 
 # 駒の定義
 EMPTY = 0
@@ -259,7 +260,7 @@ def solve():
     queue = deque([0])
     next_ids = []
     
-    step = 0
+    pbar = tqdm(desc="  列挙済み", unit="局面")
     while queue:
         u_id = queue.popleft()
         u_state = id_to_state[u_id]
@@ -278,10 +279,9 @@ def solve():
             u_nexts.append(next_id)
             
         next_ids.append(u_nexts)
-        
-        step += 1
-        if step % 200000 == 0:
-            print(f"  探索済み局面数: {step} / 発見した局面数: {len(id_to_state)} (経過時間: {time.time() - start_time:.2f}秒)")
+        pbar.update(1)
+        pbar.set_postfix(discovered=len(id_to_state))
+    pbar.close()
 
     N = len(id_to_state)
     print(f"  状態空間の列挙完了。総局面数: {N}")
@@ -290,7 +290,7 @@ def solve():
     # 2. 逆遷移 (prev_ids) の構築
     print("2. 逆遷移グラフの構築中...")
     prev_ids = [[] for _ in range(N)]
-    for u in range(N):
+    for u in tqdm(range(N), desc="  グラフ構築", unit="局面"):
         for v in next_ids[u]:
             prev_ids[v].append(u)
             
@@ -320,10 +320,11 @@ def solve():
 
     print(f"  初期確定局面数: {len(Q)}")
     
-    resolved_count = 0
+    pbar = tqdm(total=N, desc="  解析済み", unit="局面")
+    pbar.update(len(Q))
+    
     while Q:
         u = Q.popleft()
-        resolved_count += 1
         
         val_u = V[u]
         dist_u = dist[u]
@@ -339,6 +340,7 @@ def solve():
                 V[v] = v_turn
                 dist[v] = dist_u + 1
                 Q.append(v)
+                pbar.update(1)
             else:
                 out_degree[v] -= 1
                 if out_degree[v] == 0:
@@ -349,9 +351,9 @@ def solve():
                             max_d = dist[w]
                     dist[v] = max_d + 1
                     Q.append(v)
+                    pbar.update(1)
 
-        if resolved_count % 200000 == 0:
-            print(f"  解析済み局面数: {resolved_count} / {N} (経過時間: {time.time() - start_time:.2f}秒)")
+    pbar.close()
 
     print("  後退解析完了。未確定局面（引き分け）の処理中...")
     draw_count = 0
@@ -378,7 +380,7 @@ def solve():
     # 4. データベースの保存
     print("4. データベースの保存中...")
     db = {}
-    for u in range(N):
+    for u in tqdm(range(N), desc="  DB構築", unit="局面"):
         key = state_to_key(id_to_state[u])
         db[key] = (V[u], dist[u])
         
