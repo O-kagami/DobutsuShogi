@@ -122,6 +122,7 @@ def main():
             print("3: 後退解析を実行して完全解析データベースを生成する")
         else:
             print("3: 完全解析データベースを再生成する")
+        print("4: インデクサーの速度ベンチマークを実行する")
         print("q: 終了する")
         mode = input("選択してください: ").lower()
 
@@ -130,12 +131,15 @@ def main():
         elif mode == "2":
             run_analysis()
         elif mode == "3":
-            print("\n🚨 完全解析を実行します。これには約1分程度かかります。")
+            print("\n🚨 完全解析を実行します。これには約13〜14時間程度かかります（メモリを多く消費します）。")
             confirm = input("実行しますか？ (y/n): ").lower()
             if confirm == 'y':
                 import solve
                 solve.solve()
                 load_db()
+        elif mode == "4":
+            from benchmark_all import run_all_benchmarks
+            run_all_benchmarks()
         elif mode == "q":
             print("バイバイ！")
             break
